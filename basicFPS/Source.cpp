@@ -31,18 +31,18 @@ int main()
 	map += L"################";
 	map += L"#..............#";
 	map += L"#..............#";
+	map += L"#####..........#";
 	map += L"#..............#";
 	map += L"#..............#";
 	map += L"#..............#";
 	map += L"#..............#";
+	map += L"#######........#";
+	map += L"#...........#..#";
 	map += L"#..............#";
 	map += L"#..............#";
-	map += L"#..............#";
-	map += L"#..............#";
-	map += L"#..............#";
-	map += L"#..............#";
-	map += L"#..............#";
-	map += L"#..............#";
+	map += L"#.....######...#";
+	map += L"#..........#...#";
+	map += L"#..........#...#";
 	map += L"################";
 
 	auto tp1 = chrono::system_clock::now();
@@ -59,15 +59,21 @@ int main()
 		// Controls
 
 		if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
-			fPlayerViewAng -= (0.1f) * fElapsedTime;
+			fPlayerViewAng -= (0.8f) * fElapsedTime;
 
 		if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
-			fPlayerViewAng += (0.1f) * fElapsedTime;
+			fPlayerViewAng += (0.8f) * fElapsedTime;
 
 		if (GetAsyncKeyState((unsigned short)'W') & 0x8000)
 		{
 			fPlayerXpos += sinf(fPlayerViewAng) * 5.0f * fElapsedTime;
 			fPlayerYpos += cosf(fPlayerViewAng) * 5.0f * fElapsedTime;
+		}
+
+		if (GetAsyncKeyState((unsigned short)'S') & 0x8000)
+		{
+			fPlayerXpos -= sinf(fPlayerViewAng) * 5.0f * fElapsedTime;
+			fPlayerYpos -= cosf(fPlayerViewAng) * 5.0f * fElapsedTime;
 		}
 
 		for (int x = 0; x < nScreenWidth; x++)
@@ -125,7 +131,16 @@ int main()
 				else if (y > nCeiling && y <= nFloor)
 					screen[y*nScreenWidth + x] = nShade;
 				else
-					screen[y*nScreenWidth + x] = ' ';
+				{
+					float b = 1.0f - (((float)y - nScreenHeight / 2.0f) / ((float)nScreenHeight / 2.0f));
+					if (b < 0.25) nShade = '#';
+					else if (b < 0.5) nShade = 'x';
+					else if (b < 0.75) nShade = '.';
+					else if (b < 0.9) nShade = '-';
+					else nShade = ' ';
+					screen[y*nScreenWidth + x] = nShade;
+				}
+					
 			}
 		}
 
