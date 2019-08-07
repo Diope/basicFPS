@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <Windows.h>
 #include <chrono>
+#include <vector>
+#include <algorithm>
 
 using namespace std;
 
@@ -68,12 +70,24 @@ int main()
 		{
 			fPlayerXpos += sinf(fPlayerViewAng) * 5.0f * fElapsedTime;
 			fPlayerYpos += cosf(fPlayerViewAng) * 5.0f * fElapsedTime;
+
+			// Collision detection
+			if (map[(int)fPlayerYpos * nMapWidth + (int)fPlayerXpos] == '#') {
+				fPlayerXpos -= sinf(fPlayerViewAng) * 5.0f * fElapsedTime;
+				fPlayerYpos -= cosf(fPlayerViewAng) * 5.0f * fElapsedTime;
+			}
 		}
 
 		if (GetAsyncKeyState((unsigned short)'S') & 0x8000)
 		{
 			fPlayerXpos -= sinf(fPlayerViewAng) * 5.0f * fElapsedTime;
 			fPlayerYpos -= cosf(fPlayerViewAng) * 5.0f * fElapsedTime;
+
+			// Collision detection
+			if (map[(int)fPlayerYpos * nMapWidth + (int)fPlayerXpos] == '#') {
+				fPlayerXpos += sinf(fPlayerViewAng) * 5.0f * fElapsedTime;
+				fPlayerYpos += cosf(fPlayerViewAng) * 5.0f * fElapsedTime;
+			}
 		}
 
 		for (int x = 0; x < nScreenWidth; x++)
@@ -85,6 +99,7 @@ int main()
 			float fStep = 0.1f;
 
 			bool bHitWall = false;
+			bool bBoundary = false;
 
 			float fEyeX = sinf(fRayAngle); // Unit vector for ray in player space
 			float fEyeY = cosf(fRayAngle);
@@ -108,6 +123,25 @@ int main()
 					if (map[nTestY * nMapWidth + nTestX] == '#') // accidently put hashtag in the array smh
 					{
 						bHitWall = true;
+
+						vector<pair<float, float>> p; // dist, dot product
+
+						for (int tx = 0; tx < 2; tx++)
+							for (int ty = 0; ty < 2; ty++)
+							{
+								float vy = (float)nTestY + ty - fPlayerYpos;
+								float vx = (float)nTestX + tx - fPlayerXpos;
+								float d = sqrt(vx*vx + vy * vy);
+								float dot = (fEyeX*vx / d) + (fEyeY*vy / d);
+								p.push_back(make_pair(d, dot));
+							}
+						// Sort the pairs from the closest to the farthest
+						sort(p.begin(), p.end(), [](const pair<float, float> &left, const pair<float, float> &right) {return left.first < right.second; });
+
+						float fBound = 0.005f;
+						if (acos(p.at(0).second) < fBound) bBoundary = true;
+						if (acos(p.at(1).second) < fBound) bBoundary = true;
+						if (acos(p.at(2).second) < fBound) bBoundary = true;
 					}
 				}
 			}
@@ -124,6 +158,8 @@ int main()
 			else if (fDistanceToWall < fDepth)			nShade = 0x2591;
 			else										nShade = ' ';
 
+			if (bBoundary)								nShade = ' ';
+
 			for (int y = 0; y < nScreenHeight; y++)
 			{
 				if (y <= nCeiling)
@@ -133,16 +169,29 @@ int main()
 				else
 				{
 					float b = 1.0f - (((float)y - nScreenHeight / 2.0f) / ((float)nScreenHeight / 2.0f));
-					if (b < 0.25) nShade = '#';
-					else if (b < 0.5) nShade = 'x';
-					else if (b < 0.75) nShade = '.';
-					else if (b < 0.9) nShade = '-';
-					else nShade = ' ';
-					screen[y*nScreenWidth + x] = nShade;
+					if (b < 0.25)					nShade = '#';
+					else if (b < 0.5)				nShade = 'x';
+					else if (b < 0.75)				nShade = '.';
+					else if (b < 0.9)				nShade = 0x2504;
+					else							nShade = ' ';
+					screen[y*nScreenWidth + x] =	nShade;
 				}
 					
 			}
 		}
+
+		// stats
+		swprintf_s(screen, 40, L"X=%3.2f, Y=%3.2f, A=%3.2f, FPS=%3.2f ", fPlayerXpos, fPlayerYpos, fPlayerViewAng, 1.0f / fElapsedTime);
+
+		// Display the map
+		for (int nx = 0; nx < nMapWidth; nx++)
+			for (int ny = 0; ny < nMapWidth; ny++)
+			{
+				screen[(ny + 1)*nScreenWidth + nx] = map[ny*nMapWidth + nx];
+			}
+
+		// Player pos indicator
+		screen[((int)fPlayerYpos + 1)*nScreenWidth + (int)fPlayerXpos] = 'O';
 
 		screen[nScreenWidth * nScreenHeight - 1] = '\0';
 		WriteConsoleOutputCharacter(hConsole, screen, nScreenWidth * nScreenHeight, { 0, 0 }, &dwBytesWritten);
